@@ -1,0 +1,25 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: rm_arm_2025_last
+    relative_path: urdf/rm_arm_2025_last.urdf
+  srdf:
+    relative_path: config/rm_arm_2025_last.srdf
+  package_settings:
+    author_name: Yang Shengjun
+    author_email: 2982308564@qq.com
+    generated_timestamp: 1737286707
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
