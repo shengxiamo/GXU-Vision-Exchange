@@ -19,16 +19,13 @@
 #include <std_msgs/msg/bool.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <visualization_msgs/msg/marker.hpp>
-
+#include <sensor_msgs/msg/jointstate.hpp>
 // C++ system
 #include <future>
 #include <memory>
 #include <string>
 #include <thread>
 #include <vector>
-
-#include "auto_aim_interfaces/msg/target.hpp"
-#include "auto_aim_interfaces/msg/time_info.hpp"
 
 
 namespace rm_serial_driver
@@ -47,9 +44,7 @@ private:
 
   // void sendArmorData(const auto_aim_interfaces::msg::Target::ConstSharedPtr msg);
 
-  void sendArmorData(
-    const auto_aim_interfaces::msg::Target::ConstSharedPtr msg,
-    const auto_aim_interfaces::msg::TimeInfo::ConstSharedPtr time_info);
+  void sendArmorData(const auto_aim_interfaces::msg::Target::ConstSharedPtr msg);
 
   void sendNavData(geometry_msgs::msg::Twist msg);
 
@@ -70,30 +65,13 @@ private:
   // Param client to set detect_colr
   using ResultFuturePtr = std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>>;
   bool initial_set_param_ = false;
-  uint8_t previous_receive_color_ = 0;
-  rclcpp::AsyncParametersClient::SharedPtr detector_param_client_;
-  ResultFuturePtr set_param_future_;
 
-  // Service client to reset tracker
-  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr reset_tracker_client_;
+  // JointState Subscriber
+  rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SharedPtr action_client_;
 
-  // Service client to change target
-  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr change_target_client_;
+  // JointState Publisher
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
 
-  // Aimimg point receiving from serial port for visualization
-  visualization_msgs::msg::Marker aiming_point_;
-
-  // Broadcast tf from odom to gimbal_link
-  double timestamp_offset_ = 0;
-  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
-
-  // rclcpp::Subscription<auto_aim_interfaces::msg::Target>::SharedPtr aim_sub_;
-
-  message_filters::Subscriber<auto_aim_interfaces::msg::Target> aim_sub_;
-  message_filters::Subscriber<auto_aim_interfaces::msg::TimeInfo> aim_time_info_sub_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr assist_camera_sub_;
-  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr nav_sub_;
-  
   uint8_t back_result;
 
   typedef message_filters::sync_policies::ApproximateTime<

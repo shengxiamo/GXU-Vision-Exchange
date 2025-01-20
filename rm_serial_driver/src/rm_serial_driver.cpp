@@ -33,27 +33,8 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
 
   getParams();
 
-  // TF broadcaster
-  timestamp_offset_ = this->declare_parameter("timestamp_offset", 0.0);
-  tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-
   // Create Publisher
-  task_pub_ = this->create_publisher<std_msgs::msg::String>("/task_mode", 10);
-  latency_pub_ = this->create_publisher<std_msgs::msg::Float64>("/latency", 10);
-  marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/aiming_point", 10);
-  aim_time_info_pub_ =
-    this->create_publisher<auto_aim_interfaces::msg::TimeInfo>("/time_info/aim", 10);
-
-  record_controller_pub_ = this->create_publisher<std_msgs::msg::String>("/record_controller", 10);
-
-  // Detect parameter client
-  detector_param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, "armor_detector");
-
-  // Tracker reset service client
-  reset_tracker_client_ = this->create_client<std_srvs::srv::Trigger>("/tracker/reset");
-
-  // Target change service cilent
-  change_target_client_ = this->create_client<std_srvs::srv::Trigger>("/tracker/change");
+  joint_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
 
   try {
     serial_driver_->init_port(device_name_, *device_config_);
@@ -67,45 +48,9 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
     throw ex;
   }
 
-  aiming_point_.header.frame_id = "gimbal_imu";
-  aiming_point_.ns = "aiming_point";
-  aiming_point_.type = visualization_msgs::msg::Marker::SPHERE;
-  aiming_point_.action = visualization_msgs::msg::Marker::ADD;
-  aiming_point_.scale.x = aiming_point_.scale.y = aiming_point_.scale.z = 0.12;
-  aiming_point_.color.r = 1.0;
-  aiming_point_.color.g = 1.0;
-  aiming_point_.color.b = 1.0;
-  aiming_point_.color.a = 1.0;
-  aiming_point_.lifetime = rclcpp::Duration::from_seconds(0.1);
-
-  // Create Subscription
-  // aim_sub_ = this->create_subscription<auto_aim_interfaces::msg::Target>(
-  //   "/tracker/target", rclcpp::SensorDataQoS(),
-  //   std::bind(&RMSerialDriver::sendArmorData, this, std::placeholders::_1));
-  aim_sub_.subscribe(this, "/tracker/target", rclcpp::SensorDataQoS().get_rmw_qos_profile());
-  aim_time_info_sub_.subscribe(this, "/time_info/aim");
-
-
-  assist_camera_sub_ = this->create_subscription<std_msgs::msg::Bool>(
-    "/assistant_camera/result", 10,
-    [this](const std_msgs::msg::Bool::SharedPtr msg) {
-      if (msg->data) {
-        back_result = 1;
-        RCLCPP_INFO(this->get_logger(), "Turn Back");
-      } else {
-        back_result = 0;
-        RCLCPP_INFO(this->get_logger(), "back nothing");
-      }
-    });
-
-  nav_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
-    "/cmd_vel_nav", rclcpp::SensorDataQoS(),
-    std::bind(&RMSerialDriver::sendNavData, this, std::placeholders::_1));  
-
-
-  aim_sync_ = std::make_unique<AimSync>(aim_syncpolicy(500), aim_sub_, aim_time_info_sub_);
-  aim_sync_->registerCallback(
-    std::bind(&RMSerialDriver::sendArmorData, this, std::placeholders::_1, std::placeholders::_2));
+  // Create Action Client
+  action_client_ = rclcpp_action::create_client<FollowJointTrajectory>(
+            this, "/arm_controller/follow_joint_trajectory");
 }    
 
 RMSerialDriver::~RMSerialDriver()
@@ -143,81 +88,12 @@ void RMSerialDriver::receiveData()
         bool crc_ok =
           crc16::Verify_CRC16_Check_Sum(reinterpret_cast<const uint8_t *>(&packet), sizeof(packet));
         if (crc_ok) {
-          if (!initial_set_param_ || packet.detect_color != previous_receive_color_) {
-            setParam(rclcpp::Parameter("detect_color", packet.detect_color));
-            previous_receive_color_ = packet.detect_color;
-          }
-
-          if (packet.reset_tracker) {
-            resetTracker();
-          }
-
-          if (packet.change_target) {
-            changeTarget();
-          }
-
-          std_msgs::msg::String task;
-          std::string theory_task;
-
-          theory_task = "aim";
-
-
-          if (packet.task_mode == 0) {
-            task.data = theory_task;
-          } else if (packet.task_mode == 1) {
-            task.data = "aim";
-          } else if (packet.task_mode == 2) {
-            if (theory_task == "aim") {
-              task.data = "auto";
-            } else {
-              task.data = theory_task;
-            }
-          } else {
-            task.data = "aim";
-          }
-          //test
-          task.data = "aim";
-          //
-          task_pub_->publish(task);
-
-          RCLCPP_DEBUG(
-            get_logger(), "Game time: %d, Task mode: %d, Theory task: %s", packet.game_time,
-            packet.task_mode, theory_task.c_str());
-
-          std_msgs::msg::String record_controller;
-          record_controller.data = packet.is_play ? "start" : "stop";
-          record_controller_pub_->publish(record_controller);
-
-          geometry_msgs::msg::TransformStamped t;
-          timestamp_offset_ = this->get_parameter("timestamp_offset").as_double();
-          t.header.stamp = this->now() - rclcpp::Duration::from_seconds(timestamp_offset_);
-          t.header.frame_id = "gimbal_imu";
-          t.child_frame_id = "gimbal_link";
-          /*
-
-
-          
-          */
-          tf2::Quaternion q;
-          q.setRPY(packet.roll, packet.pitch, packet.yaw);
-          t.transform.rotation = tf2::toMsg(q);
-          tf_broadcaster_->sendTransform(t);
-
-          // publish time
-          auto_aim_interfaces::msg::TimeInfo aim_time_info;
-
-          aim_time_info.header = t.header;
-          aim_time_info.time = packet.timestamp;
-
-          aim_time_info_pub_->publish(aim_time_info);
-
-
-          if (abs(packet.aim_x) > 0.01) {
-            aiming_point_.header.stamp = this->now();
-            aiming_point_.pose.position.x = packet.aim_x;
-            aiming_point_.pose.position.y = packet.aim_y;
-            aiming_point_.pose.position.z = packet.aim_z;
-            marker_pub_->publish(aiming_point_);
+          sensor_msgs::msg::JointState joint_state;
+          joint_state.header.stamp = this->now();
+          joint_state.name = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6"};
+          joint_state.position = {packet.joint1, packet.joint2, packet.joint3,
+                                  packet.joint4, packet.joint5, packet.joint6};
+          joint_pub_->publish(joint_state);
           }
         } else {
           RCLCPP_ERROR(get_logger(), "CRC error!");
@@ -233,94 +109,19 @@ void RMSerialDriver::receiveData()
   }
 }
 
-void RMSerialDriver::sendArmorData(
-  const auto_aim_interfaces::msg::Target::ConstSharedPtr msg,
-  const auto_aim_interfaces::msg::TimeInfo::ConstSharedPtr time_info)
-{
-  const static std::map<std::string, uint8_t> id_unit8_map{
-    {"", 0},  {"outpost", 0}, {"1", 1}, {"1", 1},     {"2", 2},
-    {"3", 3}, {"4", 4},       {"5", 5}, {"guard", 6}, {"base", 7}};
-
-  try {
-    SendPacketArmor packet;
-    packet.state = msg->tracking ? 1 : 0;
-    packet.id = id_unit8_map.at(msg->id);
-    packet.armors_num = msg->armors_num;
-    packet.x = msg->position.x;
-    //test
-    packet.isfire = msg->is_fire;
-    packet.back = back_result;
-    packet.y = msg->position.y;
-    packet.z = msg->position.z;
-    packet.yaw = msg->yaw;
-    packet.vx = msg->velocity.x;
-    packet.vy = msg->velocity.y;
-    packet.vz = msg->velocity.z;
-    packet.v_yaw = msg->v_yaw;
-    //test
-    packet.r1 = msg->radius_1;
-    packet.r2 = msg->radius_2;
-    // packet.r1 = (msg->radius_1)/2;
-    // packet.r2 = (msg->radius_2)/2;
-    //
-    packet.dz = msg->dz;
-    // 20240329 ZY: Eliminate communication latency
-    packet.cap_timestamp = time_info->time;
-    crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&packet), sizeof(packet));
-
-    std::vector<uint8_t> data = toVectorArmor(packet);
-
-    serial_driver_->port()->send(data);
-
-    std_msgs::msg::Float64 latency;
-    latency.data = (this->now() - msg->header.stamp).seconds() * 1000.0;
-    RCLCPP_DEBUG_STREAM(get_logger(), "Total latency: " + std::to_string(latency.data) + "ms");
-    latency_pub_->publish(latency);
-  } catch (const std::exception & ex) {
-    RCLCPP_ERROR(get_logger(), "Error while sending data: %s", ex.what());
-    reopenPort();
-  }
-}
-
-void RMSerialDriver::sendNavData(geometry_msgs::msg::Twist msg)
+void RMSerialDriver::sendArmData(const auto_aim_interfaces::msg::Target::ConstSharedPtr msg)
 {
   try {
-    RCLCPP_INFO(
-      get_logger(),
-      "\n\nMsg:\nlinear.x: %f linear.y:  %f  linear.z: %f \nangular.x: %f angularv.y:  %f  "
-      "angular.z: %f\n",
-      msg.linear.x, msg.linear.y, msg.linear.z, msg.angular.x, msg.angular.y,
-      msg.angular.z);
-
-    SendPacketNav packet;
-    packet.mode = 0;
-    packet.linear_x = msg.linear.x;
-    packet.linear_y = msg.linear.y;
-    packet.linear_z = 0.0;
-    packet.angular_x = msg.angular.x;
-    packet.angular_y = msg.angular.y;
-    packet.angular_z = msg.angular.z;
-    crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&packet), sizeof(packet));
+    SendPacketArm packet;
     
-    std::vector<uint8_t> data = toVectorNav(packet);
-
-    serial_driver_->port()->send(data);
-    std::stringstream ss;
-    for (auto & byte : data) {
-      ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte) << " ";
-    }
-    RCLCPP_INFO(
-      get_logger(),
-      "\n\nNav:\nlinear.x: %f linear.y:  %f  linear.z: %f \nangular.x: %f angularv.y:  %f  "
-      "angular.z: %f \nNavData: %s\n",
-      packet.linear_x, packet.linear_y, packet.linear_z, packet.angular_x, packet.angular_y,
-      packet.angular_z, ss.str().c_str());
-
+    
   } catch (const std::exception & ex) {
     RCLCPP_ERROR(get_logger(), "Error while sending data: %s", ex.what());
     reopenPort();
   }
 }
+
+
 
 void RMSerialDriver::getParams()
 {
@@ -447,29 +248,6 @@ void RMSerialDriver::setParam(const rclcpp::Parameter & param)
   }
 }
 
-void RMSerialDriver::resetTracker()
-{
-  if (!reset_tracker_client_->service_is_ready()) {
-    RCLCPP_WARN(get_logger(), "Service not ready, skipping tracker reset");
-    return;
-  }
-
-  auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
-  reset_tracker_client_->async_send_request(request);
-  RCLCPP_INFO(get_logger(), "Reset tracker!");
-}
-
-void RMSerialDriver::changeTarget()
-{
-  if (!change_target_client_->service_is_ready()) {
-    RCLCPP_WARN(get_logger(), "Service not ready, skipping target change");
-    return;
-  }
-
-  auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
-  change_target_client_->async_send_request(request);
-  RCLCPP_INFO(get_logger(), "Change target!");
-}
 
 }  // namespace rm_serial_driver
 
