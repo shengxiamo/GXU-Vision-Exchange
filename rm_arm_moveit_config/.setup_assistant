@@ -7,7 +7,7 @@ moveit_setup_assistant_config:
   package_settings:
     author_name: Yang Shengjun
     author_email: 2982308564@qq.com
-    generated_timestamp: 1737297345
+    generated_timestamp: 1738761726
   control_xacro:
     command:
       - position
