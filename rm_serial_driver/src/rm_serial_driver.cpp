@@ -107,7 +107,6 @@ void RMSerialDriver::receiveData()
       reopenPort();
     }
   }
-}
 
 void RMSerialDriver::sendArmData(const auto_aim_interfaces::msg::Target::ConstSharedPtr msg)
 {

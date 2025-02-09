@@ -1,20 +1,9 @@
-#include <memory>
-#include <vector>
-#include <string>
+#include "rm_arm_control/arm_control_node.hpp"
 
-#include <rclcpp/rclcpp.hpp>
-#include <shape_msgs/msg/solid_primitive.hpp>
-#include <geometry_msgs/msg/pose.hpp>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/LinearMath/Matrix3x3.h>
+namespace rm_arm_control
+{
 
-#include <moveit/planning_scene_interface/planning_scene_interface.h>
-#include <moveit/move_group_interface/move_group_interface.h>
-#include <moveit_msgs/msg/collision_object.hpp>
-
-
-moveit_msgs::msg::CollisionObject boxFaceCreate(geometry_msgs::msg::Pose box_pose, std::string frame_id, std::string object_id)
+moveit_msgs::msg::CollisionObject ArmControlNode::boxFaceCreate(geometry_msgs::msg::Pose box_pose, std::string frame_id, std::string object_id)
 {
   moveit_msgs::msg::CollisionObject collision_object;
   collision_object.header.frame_id = frame_id;
@@ -35,7 +24,7 @@ moveit_msgs::msg::CollisionObject boxFaceCreate(geometry_msgs::msg::Pose box_pos
   return collision_object;
 }
 
-geometry_msgs::msg::Pose fullPoseGet(tf2::Vector3 position, tf2::Quaternion rotate)
+geometry_msgs::msg::Pose ArmControlNode::fullPoseGet(tf2::Vector3 position, tf2::Quaternion rotate)
 {
   geometry_msgs::msg::Pose full_pose;
   geometry_msgs::msg::Quaternion quaternion_msg;
@@ -49,13 +38,9 @@ geometry_msgs::msg::Pose fullPoseGet(tf2::Vector3 position, tf2::Quaternion rota
   return full_pose;
 }
 
-void exchangeBoxCreate(const geometry_msgs::msg::Pose & box_front_face_pose, 
-                      const moveit::planning_interface::MoveGroupInterface & move_interface)
+void ArmControlNode::exchangeBoxCreate(const geometry_msgs::msg::Pose & box_front_face_pose, 
+                                      const std::shared_ptr<moveit::planning_interface::MoveGroupInterface> & move_interface_)
 {
-  //box_face
-  //0      1      2      3      4     5 
-  //front  back   left   right  top   bottom
-  auto box_faces = std::vector<moveit_msgs::msg::CollisionObject>();
 
   //通过front面确定中心点
   //将msg转换为tf2形式，便于计算
@@ -96,11 +81,11 @@ void exchangeBoxCreate(const geometry_msgs::msg::Pose & box_front_face_pose,
   geometry_msgs::msg::Pose top_face_pose = fullPoseGet(top_face_pose_position, top_face_pose_quaternion);
   geometry_msgs::msg::Pose bottom_face_pose = fullPoseGet(bottom_face_pose_position, top_face_pose_quaternion);
 
-  auto const collision_box_front = boxFaceCreate(box_front_face_pose, move_interface.getPlanningFrame(), "box_front_face");
-  auto const collision_box_left = boxFaceCreate(left_face_pose, move_interface.getPlanningFrame(), "box_left_face");
-  auto const collision_box_right = boxFaceCreate(right_face_pose, move_interface.getPlanningFrame(), "box_right_face");
-  auto const collision_box_top = boxFaceCreate(top_face_pose, move_interface.getPlanningFrame(), "box_top_face");
-  auto const collision_box_bottom = boxFaceCreate(bottom_face_pose, move_interface.getPlanningFrame(), "box_bottom_face");
+  auto const collision_box_front = boxFaceCreate(box_front_face_pose, move_interface_->getPlanningFrame(), "box_front_face");
+  auto const collision_box_left = boxFaceCreate(left_face_pose, move_interface_->getPlanningFrame(), "box_left_face");
+  auto const collision_box_right = boxFaceCreate(right_face_pose, move_interface_->getPlanningFrame(), "box_right_face");
+  auto const collision_box_top = boxFaceCreate(top_face_pose, move_interface_->getPlanningFrame(), "box_top_face");
+  auto const collision_box_bottom = boxFaceCreate(bottom_face_pose, move_interface_->getPlanningFrame(), "box_bottom_face");
 
   //创建plan接口，添加障碍物
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
@@ -111,35 +96,26 @@ void exchangeBoxCreate(const geometry_msgs::msg::Pose & box_front_face_pose,
   planning_scene_interface.applyCollisionObject(collision_box_bottom);
 }
 
-int main(int argc, char * argv[])
+void ArmControlNode::initMoveit(const std_srvs::srv::Trigger::Request::SharedPtr request,
+                                std_srvs::srv::Trigger::Response::SharedPtr response)
 {
-  // Initialize ROS and create the Node
-  rclcpp::init(argc, argv);
-  auto const node = std::make_shared<rclcpp::Node>(
-    "hello_moveit",
-    rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true)
-  );
-  // Create a ROS logger
-  auto const logger = rclcpp::get_logger("hello_moveit");
-             
-  // Create the MoveIt MoveGroup Interface
-  using moveit::planning_interface::MoveGroupInterface;
-  auto move_group_interface = MoveGroupInterface(node, "arm");
-
+  //
+  if(move_group_interface_ == nullptr){
+    move_group_interface_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(this->shared_from_this(), "arm");
+    RCLCPP_INFO(this->get_logger(), "Create MoveitInterface!");
+  }else{
+    RCLCPP_INFO(this->get_logger(), "Had MoveitInterface!");
+  }
+  //
   // 定义盒状障碍物的位置test
   geometry_msgs::msg::Pose box_test_pose;
-  box_test_pose.orientation.w = 1.0;  // 朝向（单位四元数）
-  // [&box_test_pose]{
-  //   tf2::Quaternion middle_rotate;
-  //   middle_rotate.setRPY(1.0, 1.0, 1.0);
-  //   tf2::convert(middle_rotate, box_test_pose.orientation);
-  // }();
+  box_test_pose.orientation.w = 1.0;  // 朝向（单位四元数)
   box_test_pose.position.x = 0;     // x 坐标
   box_test_pose.position.y = 0.3;     // y 坐标
   box_test_pose.position.z = 0.25;    // z 坐标
 
   //create box
-  exchangeBoxCreate(box_test_pose, move_group_interface);
+  exchangeBoxCreate(box_test_pose, move_group_interface_);
 
   // Set a target Pose
   auto const target_rpy_pose = []{
@@ -161,25 +137,47 @@ int main(int argc, char * argv[])
     msg.position.z = 0.2;
     return msg;
   }();
-  move_group_interface.setPoseTarget(target_pose);
+  move_group_interface_->setPoseTarget(target_pose);
 
   // Create a plan to that target pose
-  auto const [success, plan] = [&move_group_interface]{
+  auto const [success, plan] = [this]{
     moveit::planning_interface::MoveGroupInterface::Plan msg;
-    auto const ok = static_cast<bool>(move_group_interface.plan(msg));
+    auto const ok = static_cast<bool>(this->move_group_interface_->plan(msg));
     return std::make_pair(ok, msg);
   }();
 
   // Execute the plan
   if(success) {
-    move_group_interface.execute(plan);
+    move_group_interface_->execute(plan);
+    RCLCPP_INFO(this->get_logger(), "Planning ok!");
   } else {
-    RCLCPP_ERROR(logger, "Planning failed!");
+    RCLCPP_ERROR(this->get_logger(), "Planning failed!");
   }
 
-  // Next step goes here
-  // Create a ROS logger
-  // Shutdown ROS
-  rclcpp::shutdown();
-  return 0;
+  //request and response
+  (void)request; //avoid request unused warning
+  response->success = true;
+  response->message = "Triggered successfully!";
+  RCLCPP_INFO(this->get_logger(), "Triggered successfully!");
 }
+
+ArmControlNode::ArmControlNode(const rclcpp::NodeOptions & options)
+: Node("arm_control", options),
+  move_group_interface_(nullptr)
+{
+  auto const logger = this->get_logger();
+  RCLCPP_INFO(logger, "Test now!");
+  // 
+  init_moveit_srv_ = this->create_service<std_srvs::srv::Trigger>(
+    "/trigger_service", std::bind(&ArmControlNode::initMoveit, this, std::placeholders::_1, std::placeholders::_2));
+  RCLCPP_INFO(logger, "Service set!");
+}
+
+
+} //namespace rm_arm_control
+#include "rclcpp_components/register_node_macro.hpp"
+
+// Register the component with class_loader.
+// This acts as a sort of entry point, allowing the component to be discoverable when its library
+// is being loaded into a running process.
+RCLCPP_COMPONENTS_REGISTER_NODE(rm_arm_control::ArmControlNode)
