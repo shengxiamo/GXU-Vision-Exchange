@@ -42,19 +42,12 @@ private:
 
   void receiveData();
 
-  // void sendArmorData(const auto_aim_interfaces::msg::Target::ConstSharedPtr msg);
-
-  void sendArmorData(const auto_aim_interfaces::msg::Target::ConstSharedPtr msg);
-
-  void sendNavData(geometry_msgs::msg::Twist msg);
+  void sendArmData(sensor_msgs::msg::JointState msg);
 
   void reopenPort();
 
   void setParam(const rclcpp::Parameter & param);
 
-  void resetTracker();
-
-  void changeTarget();
 
   // Serial port
   std::unique_ptr<IoContext> owned_ctx_;
@@ -70,7 +63,7 @@ private:
   rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SharedPtr action_client_;
 
   // JointState Publisher
-  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
 
   uint8_t back_result;
 

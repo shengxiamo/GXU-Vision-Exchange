@@ -34,7 +34,9 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
   getParams();
 
   // Create Publisher
-  joint_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
+  joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
+    "/joint_states", 10,
+    std::bind(&RMSerialDriver::sendArmData, this, std::placeholders::_1));
 
   try {
     serial_driver_->init_port(device_name_, *device_config_);
@@ -70,49 +72,65 @@ RMSerialDriver::~RMSerialDriver()
 
 void RMSerialDriver::receiveData()
 {
-  std::vector<uint8_t> header(1);
-  std::vector<uint8_t> data;
-  data.reserve(sizeof(ReceivePacket));
+  // std::vector<uint8_t> header(1);
+  // std::vector<uint8_t> data;
+  // data.reserve(sizeof(ReceivePacket));
 
-  while (rclcpp::ok()) {
-    try {
-      serial_driver_->port()->receive(header);
+  // while (rclcpp::ok()) {
+  //   try {
+  //     serial_driver_->port()->receive(header);
 
-      if (header[0] == 0x5A) {
-        data.resize(sizeof(ReceivePacket) - 1);
-        serial_driver_->port()->receive(data);
+  //     if (header[0] == 0x5A) {
+  //       data.resize(sizeof(ReceivePacket) - 1);
+  //       serial_driver_->port()->receive(data);
 
-        data.insert(data.begin(), header[0]);
-        ReceivePacket packet = fromVector(data);
+  //       data.insert(data.begin(), header[0]);
+  //       ReceivePacket packet = fromVector(data);
 
-        bool crc_ok =
-          crc16::Verify_CRC16_Check_Sum(reinterpret_cast<const uint8_t *>(&packet), sizeof(packet));
-        if (crc_ok) {
-          sensor_msgs::msg::JointState joint_state;
-          joint_state.header.stamp = this->now();
-          joint_state.name = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6"};
-          joint_state.position = {packet.joint1, packet.joint2, packet.joint3,
-                                  packet.joint4, packet.joint5, packet.joint6};
-          joint_pub_->publish(joint_state);
-          }
-        } else {
-          RCLCPP_ERROR(get_logger(), "CRC error!");
-        }
-      } else {
-        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 20, "Invalid header: %02X", header[0]);
-      }
-    } catch (const std::exception & ex) {
-      RCLCPP_ERROR_THROTTLE(
-        get_logger(), *get_clock(), 20, "Error while receiving data: %s", ex.what());
-      reopenPort();
-    }
-  }
+  //       bool crc_ok =
+  //         crc16::Verify_CRC16_Check_Sum(reinterpret_cast<const uint8_t *>(&packet), sizeof(packet));
+  //       if (crc_ok) {
+  //         sensor_msgs::msg::JointState joint_state;
+  //         joint_state.header.stamp = this->now();
+  //         joint_state.name = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6"};
+  //         joint_state.position = {packet.joint1, packet.joint2, packet.joint3,
+  //                                 packet.joint4, packet.joint5, packet.joint6};
+  //         joint_pub_->publish(joint_state);
+  //         }
+  //       } else {
+  //         RCLCPP_ERROR(get_logger(), "CRC error!");
+  //       }
+  //     } else {
+  //       RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 20, "Invalid header: %02X", header[0]);
+  //     }
+  //   } catch (const std::exception & ex) {
+  //     RCLCPP_ERROR_THROTTLE(
+  //       get_logger(), *get_clock(), 20, "Error while receiving data: %s", ex.what());
+  //     reopenPort();
+  //   }
+}
 
-void RMSerialDriver::sendArmData(const auto_aim_interfaces::msg::Target::ConstSharedPtr msg)
+void RMSerialDriver::sendArmData(sensor_msgs::msg::JointState msg)
 {
   try {
     SendPacketArm packet;
     
+    // 填充关节数据（示例为6轴机械臂）
+    if (msg.position.size() >= 6) {
+      packet.joint1 = static_cast<float>(msg.position[0]);
+      packet.joint2 = static_cast<float>(msg.position[1]);
+      packet.joint3 = static_cast<float>(msg.position[2]);
+      packet.joint4 = static_cast<float>(msg.position[3]);
+      packet.joint5 = static_cast<float>(msg.position[4]);
+      packet.joint6 = static_cast<float>(msg.position[5]);
+    }
+
+    // 计算CRC校验
+    crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t*>(&packet), sizeof(packet));
+
+    // 序列化并发送
+    std::vector<uint8_t> data = toVector(packet);
+    serial_driver_->port()->send(data);
     
   } catch (const std::exception & ex) {
     RCLCPP_ERROR(get_logger(), "Error while sending data: %s", ex.what());
