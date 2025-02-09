@@ -36,6 +36,23 @@ struct SendPacketArm
   float joint6;
   uint16_t checksum = 0;
 } __attribute__((packed));
+
+inline ReceivePacket fromVector(const std::vector<uint8_t> & data)
+{
+  ReceivePacket packet;
+  std::copy(data.begin(), data.end(), reinterpret_cast<uint8_t *>(&packet));
+  return packet;
+}
+
+inline std::vector<uint8_t> toVector(const SendPacketArm & data)
+{
+  std::vector<uint8_t> packet(sizeof(SendPacketArm));
+  std::copy(
+    reinterpret_cast<const uint8_t *>(&data),
+    reinterpret_cast<const uint8_t *>(&data) + sizeof(SendPacketArm), packet.begin());
+  return packet;
+}
+
 }  // namespace rm_serial_driver
 
 #endif  // RM_SERIAL_DRIVER__PACKET_HPP_

@@ -50,9 +50,6 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
     throw ex;
   }
 
-  // Create Action Client
-  action_client_ = rclcpp_action::create_client<FollowJointTrajectory>(
-            this, "/arm_controller/follow_joint_trajectory");
 }    
 
 RMSerialDriver::~RMSerialDriver()
@@ -131,6 +128,7 @@ void RMSerialDriver::sendArmData(sensor_msgs::msg::JointState msg)
     // 序列化并发送
     std::vector<uint8_t> data = toVector(packet);
     serial_driver_->port()->send(data);
+    RCLCPP_INFO(get_logger(), "Message Send!");
     
   } catch (const std::exception & ex) {
     RCLCPP_ERROR(get_logger(), "Error while sending data: %s", ex.what());

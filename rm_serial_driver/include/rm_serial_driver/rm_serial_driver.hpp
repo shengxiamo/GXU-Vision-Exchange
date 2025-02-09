@@ -19,7 +19,7 @@
 #include <std_msgs/msg/bool.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <visualization_msgs/msg/marker.hpp>
-#include <sensor_msgs/msg/jointstate.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
 // C++ system
 #include <future>
 #include <memory>
@@ -58,39 +58,20 @@ private:
   // Param client to set detect_colr
   using ResultFuturePtr = std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>>;
   bool initial_set_param_ = false;
+  uint8_t previous_receive_color_ = 0;
+  rclcpp::AsyncParametersClient::SharedPtr detector_param_client_;
+  ResultFuturePtr set_param_future_;
+
+
 
   // JointState Subscriber
-  rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SharedPtr action_client_;
-
-  // JointState Publisher
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
 
-  uint8_t back_result;
-
-  typedef message_filters::sync_policies::ApproximateTime<
-    auto_aim_interfaces::msg::Target, auto_aim_interfaces::msg::TimeInfo>
-    aim_syncpolicy;
-  typedef message_filters::Synchronizer<aim_syncpolicy> AimSync;
-  std::shared_ptr<AimSync> aim_sync_;
 
 
-
-
-
-  // For debug usage
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr latency_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_pub_;
 
   std::thread receive_thread_;
 
-  // Task message
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr task_pub_;
-
-  // Time message
-  rclcpp::Publisher<auto_aim_interfaces::msg::TimeInfo>::SharedPtr aim_time_info_pub_;
-
-
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr record_controller_pub_;
 };
 }  // namespace rm_serial_driver
 
