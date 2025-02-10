@@ -27,7 +27,6 @@ struct ReceivePacket
 struct SendPacketArm
 {
   uint8_t header = 0xA5;
-  uint8_t result;
   float joint1;
   float joint2;
   float joint3;
