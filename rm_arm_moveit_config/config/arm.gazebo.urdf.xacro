@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="rm_arm_2025_last">
+    <xacro:arg name="initial_positions_file" default="initial_positions.yaml" />
+
+    <!-- 1. 导入原始 URDF -->
+    <xacro:include filename="$(find rm_arm_2025_last)/urdf/rm_arm_2025_last.urdf" />
+
+    <!-- Fix robot to Gazebo world -->
+    <link name="world"/>
+    <joint name="world_joint" type="fixed">
+        <parent link="world"/>
+        <child link="base_link"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- 2. 导入 Gazebo 专用的 ros2_control 描述 -->
+    <xacro:include filename="arm.gazebo.ros2_control.xacro" />
+
+    <!-- 3. 加载 ros2_control 宏 -->
+    <xacro:rm_arm_2025_last_ros2_control name="IgnitionSystem" initial_positions_file="$(arg initial_positions_file)"/>
+
+    <!-- 4. 加载 Gazebo 插件 -->
+    <gazebo>
+        <plugin filename="ign_ros2_control-system" name="ign_ros2_control::IgnitionROS2ControlPlugin">
+            <parameters>$(find rm_arm_moveit_config)/config/ros2_controllers.yaml</parameters>
+        </plugin>
+    </gazebo>
+</robot>
