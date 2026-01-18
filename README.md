@@ -1,3 +1,6 @@
+# 项目介绍
+基于MoveIT的机械臂控制和视觉兑矿，包括仿真环境和真臂部署
+
 ## 依赖安装
 在使用realsense-ros包之前需要安装realsense2的SDK，具体方法可在这里查看“https://github.com/IntelRealSense/librealsense/releases
 
@@ -12,3 +15,10 @@ sudo apt-get update
 
 sudo apt-get install librealsense2-dev librealsense2-dkms librealsense2-utils
 ```
+
+## 环境
+Ubuntu 22.04LTS
+
+ROS 2 Humble
+
+Gazebo Fortress(Ignition Gazebo 6)
