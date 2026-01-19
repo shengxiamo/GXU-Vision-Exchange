@@ -119,15 +119,17 @@ hardware_interface::return_type RMArmHardwareInterface::read(
         hw_states_position_[4] = received_packet_.joint5;
         hw_states_position_[5] = received_packet_.joint6;
 
-        // 以下代码仅为测试，使用时删除
+        
         std::vector<double> pre_states_potion = hw_states_position_;
 
+        // 以下代码仅为测试，使用时删除
         hw_states_position_[0] = hw_commands_[0];
         hw_states_position_[1] = hw_commands_[1];
         hw_states_position_[2] = hw_commands_[2];
         hw_states_position_[3] = hw_commands_[3];
         hw_states_position_[4] = hw_commands_[4];
         hw_states_position_[5] = hw_commands_[5];
+        
 
         hw_states_velocity_[0] = (hw_commands_[0] - pre_states_potion[0]) / period.seconds();
         hw_states_velocity_[1] = (hw_commands_[1] - pre_states_potion[1]) / period.seconds();
