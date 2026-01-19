@@ -1,6 +1,5 @@
 # 项目介绍
-基于MoveIT的机械臂控制和视觉兑矿，包括仿真环境和真臂部署，
-内含一个硬件接口（RMArmHardwareInterface），实现cotroller与下位机的通信。
+基于MoveIT和ros2 control的机械臂控制和视觉兑矿（只有前者），包括仿真环境和真臂部署。
 
 ## 依赖安装
 在使用realsense-ros包之前需要安装realsense2的SDK，具体方法可在这里查看“https://github.com/IntelRealSense/librealsense/releases
@@ -34,7 +33,7 @@ Gazebo仿真:
 ```bash
 ros2 launch launch rm_arm_moveit_config gazebo.launch.py
 ```
-真臂控制：ros2 
+真臂控制：
 ```bash
 ros2 launch rm_arm_moveit_config real_controll.launch.py
 ```
