@@ -49,10 +49,7 @@ rm_arm_2025_last.ros2_control.xacro为moveit自动导出，使用的硬件接口
                 <!-- By default, set up controllers for simulation. This won't work on real hardware -->
                 <plugin>mock_components/GenericSystem</plugin>
             </hardware>
-```
-
-arm.gazebo.ros2_control.xacro将硬件接口替换为Gazebo Ignition的虚拟硬件接口，在Gazebo仿真世界中虚拟硬件。
-```xml
+```unch_params_o_pqhftc --params-file /tmp/launch_params_rfb1kuz2'].
 <ros2_control name="${name}" type="system">
             <hardware>
                 <plugin>ign_ros2_control/IgnitionSystem</plugin>
@@ -67,4 +64,6 @@ arm_real.ros2_control.xacro将硬件接口替换成自定义的RMArmHardwareInte
 
 RMArmHardwareInterface的定义在rm_arm_hardware中，为了测试正确性注释了部分代码（主要是串口收发）并添加了额外的逻辑，可根据rm_arm_hardware_interface.cpp中的引导修改。
 
+## Tips
+由于这是上赛季遗留的工作，已不适配本赛季需求，所以后续可能不会再更新视觉伺服、仿真环境搭建相关的代码。
 
