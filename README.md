@@ -41,7 +41,7 @@ ros2 launch rm_arm_moveit_config real_controll.launch.py
 ## 关键讲解：
 ros2 control将控制器(controller)与硬件接口(hardware_interface)解耦（但不是通过话题进行通信），机械臂控制器可通用，在本项目中为joint_trajectory_controller/JointTrajectoryController。
 
-因此不同场景只需替换相应的硬件接口，体现在rm_arm_moveit_config/config中各种.xacro文件仅有<hardware>标签中的<plugin>不同。
+因此不同场景只需替换相应的硬件接口，体现在rm_arm_moveit_config/config中各种.xacro文件仅有`<hardware>`标签中的`<plugin>`不同。
 
 rm_arm_2025_last.ros2_control.xacro为moveit自动导出，使用的硬件接口mock_components/GenericSystem为ros2_control自带的虚拟硬件接口，用于模拟任何硬件。
 ```xml
