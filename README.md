@@ -9,7 +9,7 @@
 sudo mkdir -p /etc/apt/keyrings
 curl -sSf https://librealsense.intel.com/Debian/librealsense.pgp | sudo tee /etc/apt/keyrings/librealsense.pgp > /dev/null
 
-echo "deb [signed-by=/etc/apt/keyrings/librealsense.pgp] https://librealsense.intel.com/Debian/apt-repo `lsb_release -cs` main" | \
+echo "deb [signed-by=/etc/apt/keyrings/librealsense.pgp] https://librealse修正README.md中的代码块格式，确保<hardware>标签中的<plugin>部分使用反引号包裹nse.intel.com/Debian/apt-repo `lsb_release -cs` main" | \
 sudo tee /etc/apt/sources.list.d/librealsense.list
 sudo apt-get update
 
@@ -24,16 +24,7 @@ ROS 2 Humble
 
 Gazebo Fortress(Ignition Gazebo 6)
 
-## 编译
-```
-colcon build
-```
-## 启动
-Gazebo仿真:
-```bash
-ros2 launch launch rm_arm_moveit_config gazebo.launch.py
-```
-真臂控制：
+## 编译修正README.md中的代码块格式，确保<hardware>标签中的<plugin>部分使用反引号包裹
 ```bash
 ros2 launch rm_arm_moveit_config real_controll.launch.py
 ```
@@ -50,7 +41,10 @@ rm_arm_2025_last.ros2_control.xacro为moveit自动导出，使用的硬件接口
                 <!-- By default, set up controllers for simulation. This won't work on real hardware -->
                 <plugin>mock_components/GenericSystem</plugin>
             </hardware>
-```unch_params_o_pqhftc --params-file /tmp/launch_params_rfb1kuz2'].
+```
+
+arm.gazebo.ros2_control.xacro将硬件接口替换为Gazebo Ignition的虚拟硬件接口，在Gazebo仿真世界中虚拟硬件。
+```xml
 <ros2_control name="${name}" type="system">
             <hardware>
                 <plugin>ign_ros2_control/IgnitionSystem</plugin>
@@ -58,11 +52,12 @@ rm_arm_2025_last.ros2_control.xacro为moveit自动导出，使用的硬件接口
 ```
 
 arm_real.ros2_control.xacro将硬件接口替换成自定义的RMArmHardwareInterface类，实现串口与controler的通信
+```xml
 <ros2_control name="${name}" type="system">
             <hardware>
                 <plugin>rm_arm_hardware/RMArmHardwareInterface</plugin>
             </hardware>
-
+```
 RMArmHardwareInterface的定义在rm_arm_hardware中，为了测试正确性注释了部分代码（主要是串口收发）并添加了额外的逻辑，可根据rm_arm_hardware_interface.cpp中的引导修改。
 
 ## 小结
