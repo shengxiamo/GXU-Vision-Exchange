@@ -1,0 +1,9 @@
+<library path="rm_arm_hardware">
+  <class name="rm_arm_hardware/RMArmHardwareInterface"
+         type="rm_arm_hardware::RMArmHardwareInterface"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Generic hardware interface for RM Arm
+    </description>
+  </class>
+</library>
