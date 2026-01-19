@@ -25,12 +25,46 @@ ROS 2 Humble
 
 Gazebo Fortress(Ignition Gazebo 6)
 
+## 编译
+
 ## 启动
 Gazebo仿真:
 ```bash
 ros2 launch launch rm_arm_moveit_config gazebo.launch.py
 ```
-真臂控制：
+真臂控制：ros2 
 ```bash
 ros2 launch rm_arm_moveit_config real_controll.launch.py
 ```
+
+## 关键讲解：
+ros2 control将控制器(controller)与硬件接口(hardware_interface)解耦（但不是通过话题进行通信），机械臂控制器可通用，在本项目中为joint_trajectory_controller/JointTrajectoryController。
+
+因此不同场景只需替换相应的硬件接口，体现在rm_arm_moveit_config/config中各种.xacro文件仅有<hardware>标签中的<plugin>不同。
+
+rm_arm_2025_last.ros2_control.xacro为moveit自动导出，使用的硬件接口mock_components/GenericSystem为ros2_control自带的虚拟硬件接口，用于模拟任何硬件。
+```xml
+<ros2_control name="${name}" type="system">
+            <hardware>
+                <!-- By default, set up controllers for simulation. This won't work on real hardware -->
+                <plugin>mock_components/GenericSystem</plugin>
+            </hardware>
+```
+
+arm.gazebo.ros2_control.xacro将硬件接口替换为Gazebo Ignition的虚拟硬件接口，在Gazebo仿真世界中虚拟硬件。
+```xml
+<ros2_control name="${name}" type="system">
+            <hardware>
+                <plugin>ign_ros2_control/IgnitionSystem</plugin>
+            </hardware>
+```
+
+arm_real.ros2_control.xacro将硬件接口替换成自定义的RMArmHardwareInterface类，实现串口与controler的通信
+<ros2_control name="${name}" type="system">
+            <hardware>
+                <plugin>rm_arm_hardware/RMArmHardwareInterface</plugin>
+            </hardware>
+
+RMArmHardwareInterface的定义在rm_arm_hardware中，为了测试正确性注释了部分代码（主要是串口收发）并添加了额外的逻辑，可根据rm_arm_hardware_interface.cpp中的引导修改。
+
+
