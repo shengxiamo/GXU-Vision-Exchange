@@ -65,5 +65,5 @@ arm_real.ros2_control.xacro将硬件接口替换成自定义的RMArmHardwareInte
 RMArmHardwareInterface的定义在rm_arm_hardware中，为了测试正确性注释了部分代码（主要是串口收发）并添加了额外的逻辑，可根据rm_arm_hardware_interface.cpp中的引导修改。
 
 ## Tips
-由于这是上赛季遗留的工作，已不适配本赛季需求，所以后续可能不会再更新视觉伺服、仿真环境搭建相关的代码。但其中 Gazebo、MoveIt 与 ros2_control 中的各种概念，以及三者之间的联动，也是我摸索了一整年才弄懂的，或能为做工程的同学提供一点参考。
+这是上赛季遗留的工作，原本因ros2_control文档不全、资料太少，以及个人能力问题早早弃坑，看到交龙的同学的分享才决定重新拾起，但已不适配本赛季需求，所以后续大概率不会再更新视觉伺服、仿真环境搭建相关的代码。但是其中 Gazebo、MoveIt 与 ros2_control三者之间的联动，也是我摸索了一整年才弄懂的，或能为后来做工程的同学提供一点参考。
 
