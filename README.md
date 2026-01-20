@@ -26,6 +26,16 @@ Gazebo Fortress(Ignition Gazebo 6)
 
 ## 编译
 ```bash
+colcon build
+```
+## 启动
+gazebo:
+
+```bash
+ros2 launch rm_arm_moveit_config gazebo.launch.py
+```
+真臂：
+```bash
 ros2 launch rm_arm_moveit_config real_controll.launch.py
 ```
 
