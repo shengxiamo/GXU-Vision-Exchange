@@ -27,8 +27,8 @@ hardware_interface::CallbackReturn RMArmHardwareInterface::on_init(
     using Parity = drivers::serial_driver::Parity;
     using StopBits = drivers::serial_driver::StopBits;
 
-    baud_rate = 115200;
-    device_name_ = "/dev/ttyUSB0";
+    baud_rate =  static_cast<uint32_t>(std::stoul(info_.hardware_parameters["baud_rate"]));
+    device_name_ = info_.hardware_parameters["port_name"];
 
     auto fc = FlowControl::NONE;
     auto pt = Parity::NONE;
@@ -77,16 +77,16 @@ hardware_interface::CallbackReturn RMArmHardwareInterface::on_configure(
     (void)previous_state;
     
     // 为测试暂时注释掉串口打开代码
-    // try {
-    //     serial_driver_->init_port(device_name_, *device_config_);
-    //     if (!serial_driver_->port()->is_open()) {
-    //       serial_driver_->port()->open();
-    //       receive_thread_ = std::thread(&rm_arm_hardware::RMArmHardwareInterface::receiveData, this);
-    //     }
-    //   } catch (const std::exception & ex) {
-    //     RCLCPP_ERROR(rclcpp::get_logger("rm_arm_hardware_interface"), "Failed to open serial port: %s", ex.what());
-    //     return hardware_interface::CallbackReturn::ERROR;
-    //   }
+    try {
+        serial_driver_->init_port(device_name_, *device_config_);
+        if (!serial_driver_->port()->is_open()) {
+          serial_driver_->port()->open();
+          receive_thread_ = std::thread(&rm_arm_hardware::RMArmHardwareInterface::receiveData, this);
+        }
+      } catch (const std::exception & ex) {
+        RCLCPP_ERROR(rclcpp::get_logger("rm_arm_hardware_interface"), "Failed to open serial port: %s", ex.what());
+        return hardware_interface::CallbackReturn::ERROR;
+      }
 
     return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -123,35 +123,38 @@ hardware_interface::return_type RMArmHardwareInterface::read(
         std::vector<double> pre_states_potion = hw_states_position_;
 
         // 以下代码仅为测试，使用时删除
+
+        // 测试随机角度
         hw_states_position_[0] = hw_commands_[0];
         hw_states_position_[1] = hw_commands_[1];
         hw_states_position_[2] = hw_commands_[2];
         hw_states_position_[3] = hw_commands_[3];
         hw_states_position_[4] = hw_commands_[4];
         hw_states_position_[5] = hw_commands_[5];
-        
 
-        hw_states_velocity_[0] = (hw_commands_[0] - pre_states_potion[0]) / period.seconds();
-        hw_states_velocity_[1] = (hw_commands_[1] - pre_states_potion[1]) / period.seconds();
-        hw_states_velocity_[2] = (hw_commands_[2] - pre_states_potion[2]) / period.seconds();
-        hw_states_velocity_[3] = (hw_commands_[3] - pre_states_potion[3]) / period.seconds();
-        hw_states_velocity_[4] = (hw_commands_[4] - pre_states_potion[4]) / period.seconds();
-        hw_states_velocity_[5] = (hw_commands_[5] - pre_states_potion[5]) / period.seconds();
+
+        hw_states_velocity_[0] = (hw_states_position_[0] - pre_states_potion[0]) / period.seconds();
+        hw_states_velocity_[1] = (hw_states_position_[1] - pre_states_potion[1]) / period.seconds();
+        hw_states_velocity_[2] = (hw_states_position_[2] - pre_states_potion[2]) / period.seconds();
+        hw_states_velocity_[3] = (hw_states_position_[3] - pre_states_potion[3]) / period.seconds();
+        hw_states_velocity_[4] = (hw_states_position_[4] - pre_states_potion[4]) / period.seconds();
+        hw_states_velocity_[5] = (hw_states_position_[5] - pre_states_potion[5]) / period.seconds();
+        return hardware_interface::return_type::OK;
     }
 
-    return hardware_interface::return_type::OK;
+    return hardware_interface::return_type::ERROR;
 }
 
 hardware_interface::return_type RMArmHardwareInterface::write(
     const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
     //为测试暂时注释掉发送数据的代码
-    // send_packet_.joint1 = hw_commands_[0];
-    // send_packet_.joint2 = hw_commands_[1];
-    // send_packet_.joint3 = hw_commands_[2];
-    // send_packet_.joint4 = hw_commands_[3];
-    // send_packet_.joint5 = hw_commands_[4];
-    // send_packet_.joint6 = hw_commands_[5];
+    send_packet_.joint1 = hw_commands_[0];
+    send_packet_.joint2 = hw_commands_[1];
+    send_packet_.joint3 = hw_commands_[2];
+    send_packet_.joint4 = hw_commands_[3];
+    send_packet_.joint5 = hw_commands_[4];
+    send_packet_.joint6 = hw_commands_[5];
 
     
     crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&send_packet_), sizeof(send_packet_));
@@ -159,13 +162,13 @@ hardware_interface::return_type RMArmHardwareInterface::write(
     // 序列化并发送
     std::vector<uint8_t> data = rm_serial_driver::toVector(send_packet_);
     // 为测试暂时注释掉发送数据的代码
-    // try {
-    //     serial_driver_->port()->send(data);
-    // } catch (const std::exception & ex) {
-    //     RCLCPP_ERROR(
-    //         rclcpp::get_logger("rm_arm_hardware_interface"), "Error while sending data: %s", ex.what());
-    //     reopenPort();
-    // }
+    try {
+        serial_driver_->port()->send(data);
+    } catch (const std::exception & ex) {
+        RCLCPP_ERROR(
+            rclcpp::get_logger("rm_arm_hardware_interface"), "Error while sending data: %s", ex.what());
+        reopenPort();
+    }
     return hardware_interface::return_type::OK;
 }
 
