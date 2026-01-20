@@ -11,14 +11,17 @@ def generate_launch_description():
         .to_moveit_configs()
 
     # 1. 启动 ros2_control Node (硬件接口管理器)
-    # 对于真机，这个节点负责加载硬件插件(rm_arm_hardware)并运行控制循环
     ros2_control_node = Node(
         package="controller_manager",
         executable="ros2_control_node",
         parameters=[
-            moveit_config.robot_description,
-            moveit_config.robot_description_semantic, # SRDF (如果需要)
+            # 移除 robot_description 参数，改用话题订阅
+            # moveit_config.robot_description,
+            moveit_config.robot_description_semantic, 
             get_package_share_directory("rm_arm_moveit_config") + "/config/ros2_controllers.yaml"
+        ],
+        remappings=[
+            ("~/robot_description", "/robot_description"),
         ],
         output="screen",
     )
@@ -71,12 +74,11 @@ def generate_launch_description():
     )
     
     # 7. 静态 TF 发布 (World -> Base Link)
-    # 如果你的机器人底座不是固定的，或者需要与世界坐标系对齐，可以使用这个
     static_tf_node = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
         name="static_transform_publisher",
-        arguments=["--frame_id", "world", "--child_frame_id", "base_link", "0", "0", "0", "0", "0", "0"],
+        arguments=["0", "0", "0", "0", "0", "0", "world", "base_link"],
     )
 
     return LaunchDescription([
