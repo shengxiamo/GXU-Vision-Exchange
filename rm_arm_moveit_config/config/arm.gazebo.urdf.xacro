@@ -21,7 +21,7 @@
 
     <!-- 4. 加载 Gazebo 插件 -->
     <gazebo>
-        <plugin filename="ign_ros2_control-system" name="ign_ros2_control::IgnitionROS2ControlPlugin">
+        <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
             <parameters>$(find rm_arm_moveit_config)/config/ros2_controllers.yaml</parameters>
         </plugin>
     </gazebo>
