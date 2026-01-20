@@ -24,7 +24,7 @@ ROS 2 Humble
 
 Gazebo Fortress(Ignition Gazebo 6)
 
-## 编译修正README.md中的代码块格式，确保<hardware>标签中的<plugin>部分使用反引号包裹
+## 编译
 ```bash
 ros2 launch rm_arm_moveit_config real_controll.launch.py
 ```
