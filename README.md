@@ -9,7 +9,7 @@
 sudo mkdir -p /etc/apt/keyrings
 curl -sSf https://librealsense.intel.com/Debian/librealsense.pgp | sudo tee /etc/apt/keyrings/librealsense.pgp > /dev/null
 
-echo "deb [signed-by=/etc/apt/keyrings/librealsense.pgp] https://librealse修正README.md中的代码块格式，确保<hardware>标签中的<plugin>部分使用反引号包裹nse.intel.com/Debian/apt-repo `lsb_release -cs` main" | \
+echo "deb [signed-by=/etc/apt/keyrings/librealsense.pgp] https://librealsense.intel.com/Debian/apt-repo `lsb_release -cs` main" | \
 sudo tee /etc/apt/sources.list.d/librealsense.list
 sudo apt-get update
 
